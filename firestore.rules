@@ -1,0 +1,294 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Pillar 1 & Phase 4.1: Global Safety Net (Default Deny)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Phase 3: Hardened Global Helpers
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser(userId) {
+      return isSignedIn() &&
+        request.auth.uid == userId &&
+        request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string &&
+        id.size() >= 1 &&
+        id.size() <= 128 &&
+        id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Validation Blueprint: Account
+    function isValidAccount(data) {
+      return data.keys().hasAll([
+          'userId', 'name', 'accountType', 'institution', 'currency', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'userId', 'name', 'accountType', 'institution', 'currency', 'createdAt', 'updatedAt'
+        ]) &&
+        data.userId is string &&
+        data.userId.size() >= 1 &&
+        data.userId.size() <= 128 &&
+        data.userId.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.userId == request.auth.uid &&
+        data.name is string &&
+        data.name.size() >= 1 &&
+        data.name.size() <= 80 &&
+        data.accountType is string &&
+        data.accountType.size() <= 20 &&
+        (data.accountType == 'INVESTMENT' || data.accountType == 'RETIREMENT') &&
+        data.institution is string &&
+        data.institution.size() >= 1 &&
+        data.institution.size() <= 80 &&
+        data.currency is string &&
+        data.currency.size() == 3 &&
+        data.currency == 'USD' &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    // Validation Blueprint: Holding
+    function isValidHolding(data) {
+      return data.keys().hasAll([
+          'userId', 'accountId', 'accountName', 'accountType', 'ticker',
+          'shares', 'purchasePrice', 'purchaseDate', 'notes', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'userId', 'accountId', 'accountName', 'accountType', 'ticker',
+          'shares', 'purchasePrice', 'purchaseDate', 'notes', 'createdAt', 'updatedAt'
+        ]) &&
+        data.userId is string &&
+        data.userId.size() >= 1 &&
+        data.userId.size() <= 128 &&
+        data.userId.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.userId == request.auth.uid &&
+        data.accountId is string &&
+        data.accountId.size() >= 1 &&
+        data.accountId.size() <= 128 &&
+        data.accountId.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.accountName is string &&
+        data.accountName.size() >= 1 &&
+        data.accountName.size() <= 80 &&
+        data.accountType is string &&
+        data.accountType.size() <= 20 &&
+        (data.accountType == 'INVESTMENT' || data.accountType == 'RETIREMENT') &&
+        data.ticker is string &&
+        data.ticker.size() >= 1 &&
+        data.ticker.size() <= 12 &&
+        data.ticker.matches('^[A-Z0-9.\\-]+$') &&
+        (data.shares is int || data.shares is float) &&
+        data.shares > 0 &&
+        data.shares <= 1000000000 &&
+        (data.purchasePrice is int || data.purchasePrice is float) &&
+        data.purchasePrice > 0 &&
+        data.purchasePrice <= 1000000000 &&
+        data.purchaseDate is string &&
+        data.purchaseDate.size() == 10 &&
+        data.purchaseDate.matches('^\\d{4}-\\d{2}-\\d{2}$') &&
+        data.notes is string &&
+        data.notes.size() <= 240 &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    // Validation Blueprint: FavoriteTicker
+    function isValidFavorite(data) {
+      return data.keys().hasAll([
+          'userId', 'ticker', 'companyName', 'sector', 'thesisNotes', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'userId', 'ticker', 'companyName', 'sector', 'thesisNotes', 'createdAt', 'updatedAt'
+        ]) &&
+        data.userId is string &&
+        data.userId.size() >= 1 &&
+        data.userId.size() <= 128 &&
+        data.userId.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.userId == request.auth.uid &&
+        data.ticker is string &&
+        data.ticker.size() >= 1 &&
+        data.ticker.size() <= 12 &&
+        data.ticker.matches('^[A-Z0-9.\\-]+$') &&
+        data.companyName is string &&
+        data.companyName.size() >= 1 &&
+        data.companyName.size() <= 120 &&
+        data.sector is string &&
+        data.sector.size() >= 1 &&
+        data.sector.size() <= 80 &&
+        data.thesisNotes is string &&
+        data.thesisNotes.size() <= 500 &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    // Validation Blueprint: AnalysisReport
+    function isValidAnalysis(data) {
+      return data.keys().hasAll([
+          'userId', 'periodKey', 'triggerType', 'modelUsed',
+          'totalValue', 'totalCostBasis', 'totalUnrealizedGain', 'totalReturnPct',
+          'topHoldingTicker', 'topHoldingWeightPct', 'staleOrMissingCount',
+          'executiveSummary', 'concentrationAnalysis', 'dataQualityNotice',
+          'recommendationsText', 'limitationsAndBasis', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'userId', 'periodKey', 'triggerType', 'modelUsed',
+          'totalValue', 'totalCostBasis', 'totalUnrealizedGain', 'totalReturnPct',
+          'topHoldingTicker', 'topHoldingWeightPct', 'staleOrMissingCount',
+          'executiveSummary', 'concentrationAnalysis', 'dataQualityNotice',
+          'recommendationsText', 'limitationsAndBasis', 'createdAt', 'updatedAt'
+        ]) &&
+        data.userId is string &&
+        data.userId.size() >= 1 &&
+        data.userId.size() <= 128 &&
+        data.userId.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.userId == request.auth.uid &&
+        data.periodKey is string &&
+        data.periodKey.size() >= 1 &&
+        data.periodKey.size() <= 64 &&
+        data.triggerType is string &&
+        data.triggerType.size() <= 20 &&
+        (data.triggerType == 'MONTHLY' || data.triggerType == 'ON_DEMAND') &&
+        data.modelUsed is string &&
+        data.modelUsed.size() >= 1 &&
+        data.modelUsed.size() <= 80 &&
+        (data.totalValue is int || data.totalValue is float) &&
+        (data.totalCostBasis is int || data.totalCostBasis is float) &&
+        (data.totalUnrealizedGain is int || data.totalUnrealizedGain is float) &&
+        (data.totalReturnPct is int || data.totalReturnPct is float) &&
+        data.topHoldingTicker is string &&
+        data.topHoldingTicker.size() >= 1 &&
+        data.topHoldingTicker.size() <= 12 &&
+        (data.topHoldingWeightPct is int || data.topHoldingWeightPct is float) &&
+        data.staleOrMissingCount is int &&
+        data.staleOrMissingCount >= 0 &&
+        data.executiveSummary is string &&
+        data.executiveSummary.size() >= 1 &&
+        data.executiveSummary.size() <= 2000 &&
+        data.concentrationAnalysis is string &&
+        data.concentrationAnalysis.size() >= 1 &&
+        data.concentrationAnalysis.size() <= 2000 &&
+        data.dataQualityNotice is string &&
+        data.dataQualityNotice.size() >= 1 &&
+        data.dataQualityNotice.size() <= 1500 &&
+        data.recommendationsText is string &&
+        data.recommendationsText.size() >= 1 &&
+        data.recommendationsText.size() <= 3000 &&
+        data.limitationsAndBasis is string &&
+        data.limitationsAndBasis.size() >= 1 &&
+        data.limitationsAndBasis.size() <= 1500 &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    // Collection 1: Accounts
+    match /users/{userId}/accounts/{accountId} {
+      allow get: if isOwner(userId) && isValidId(userId) && isValidId(accountId) && existing().userId == request.auth.uid;
+      allow list: if isOwner(userId) && existing().userId == request.auth.uid;
+      allow create: if isVerifiedUser(userId) &&
+        isValidId(userId) &&
+        isValidId(accountId) &&
+        isValidAccount(incoming()) &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isVerifiedUser(userId) &&
+        isValidId(userId) &&
+        isValidId(accountId) &&
+        isValidAccount(incoming()) &&
+        incoming().userId == existing().userId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['name', 'accountType', 'institution', 'updatedAt']);
+      allow delete: if isVerifiedUser(userId) && isValidId(userId) && isValidId(accountId) && existing().userId == request.auth.uid;
+    }
+
+    // Collection 2: Holdings
+    match /users/{userId}/holdings/{holdingId} {
+      allow get: if isOwner(userId) && isValidId(userId) && isValidId(holdingId) && existing().userId == request.auth.uid;
+      allow list: if isOwner(userId) && existing().userId == request.auth.uid;
+      allow create: if isVerifiedUser(userId) &&
+        isValidId(userId) &&
+        isValidId(holdingId) &&
+        isValidHolding(incoming()) &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        exists(/databases/$(database)/documents/users/$(userId)/accounts/$(incoming().accountId));
+      allow update: if isVerifiedUser(userId) &&
+        isValidId(userId) &&
+        isValidId(holdingId) &&
+        isValidHolding(incoming()) &&
+        incoming().userId == existing().userId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'accountId', 'accountName', 'accountType', 'ticker', 'shares', 'purchasePrice', 'purchaseDate', 'notes', 'updatedAt'
+        ]) &&
+        exists(/databases/$(database)/documents/users/$(userId)/accounts/$(incoming().accountId));
+      allow delete: if isVerifiedUser(userId) && isValidId(userId) && isValidId(holdingId) && existing().userId == request.auth.uid;
+    }
+
+    // Collection 3: Favorites
+    match /users/{userId}/favorites/{favoriteId} {
+      allow get: if isOwner(userId) && isValidId(userId) && isValidId(favoriteId) && existing().userId == request.auth.uid;
+      allow list: if isOwner(userId) && existing().userId == request.auth.uid;
+      allow create: if isVerifiedUser(userId) &&
+        isValidId(userId) &&
+        isValidId(favoriteId) &&
+        isValidFavorite(incoming()) &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isVerifiedUser(userId) &&
+        isValidId(userId) &&
+        isValidId(favoriteId) &&
+        isValidFavorite(incoming()) &&
+        incoming().userId == existing().userId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['companyName', 'sector', 'thesisNotes', 'updatedAt']);
+      allow delete: if isVerifiedUser(userId) && isValidId(userId) && isValidId(favoriteId) && existing().userId == request.auth.uid;
+    }
+
+    // Collection 4: Analyses
+    match /users/{userId}/analyses/{analysisId} {
+      allow get: if isOwner(userId) && isValidId(userId) && isValidId(analysisId) && existing().userId == request.auth.uid;
+      allow list: if isOwner(userId) && existing().userId == request.auth.uid;
+      allow create: if isVerifiedUser(userId) &&
+        isValidId(userId) &&
+        isValidId(analysisId) &&
+        isValidAnalysis(incoming()) &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isVerifiedUser(userId) &&
+        isValidId(userId) &&
+        isValidId(analysisId) &&
+        isValidAnalysis(incoming()) &&
+        incoming().userId == existing().userId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'modelUsed', 'totalValue', 'totalCostBasis', 'totalUnrealizedGain', 'totalReturnPct',
+          'topHoldingTicker', 'topHoldingWeightPct', 'staleOrMissingCount',
+          'executiveSummary', 'concentrationAnalysis', 'dataQualityNotice',
+          'recommendationsText', 'limitationsAndBasis', 'updatedAt'
+        ]);
+      allow delete: if isVerifiedUser(userId) && isValidId(userId) && isValidId(analysisId) && existing().userId == request.auth.uid;
+    }
+  }
+}

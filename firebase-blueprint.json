@@ -1,0 +1,304 @@
+{
+  "entities": {
+    "Account": {
+      "title": "Account",
+      "description": "An investment or retirement account owned by a user.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Firebase Auth UID of the account owner.",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "name": {
+          "type": "string",
+          "description": "Human-readable name of the account (e.g., Individual Brokerage, Roth IRA).",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "accountType": {
+          "type": "string",
+          "description": "Category of account: INVESTMENT or RETIREMENT.",
+          "enum": ["INVESTMENT", "RETIREMENT"]
+        },
+        "institution": {
+          "type": "string",
+          "description": "Custodian or brokerage institution name.",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "currency": {
+          "type": "string",
+          "description": "Base currency ISO code (always USD for deterministic calculation).",
+          "enum": ["USD"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of creation."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of last update."
+        }
+      },
+      "required": ["userId", "name", "accountType", "institution", "currency", "createdAt", "updatedAt"]
+    },
+    "Holding": {
+      "title": "Holding",
+      "description": "A stock position or tax lot held inside a specific account.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Firebase Auth UID of the owner.",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "accountId": {
+          "type": "string",
+          "description": "ID of the parent account.",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "accountName": {
+          "type": "string",
+          "description": "Denormalized name of the parent account.",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "accountType": {
+          "type": "string",
+          "description": "Category of parent account: INVESTMENT or RETIREMENT.",
+          "enum": ["INVESTMENT", "RETIREMENT"]
+        },
+        "ticker": {
+          "type": "string",
+          "description": "Uppercase stock ticker symbol (e.g., AAPL, GOOGL).",
+          "minLength": 1,
+          "maxLength": 12,
+          "pattern": "^[A-Z0-9.\\-]+$"
+        },
+        "shares": {
+          "type": "number",
+          "description": "Positive quantity of shares held."
+        },
+        "purchasePrice": {
+          "type": "number",
+          "description": "Per-share purchase cost basis in USD."
+        },
+        "purchaseDate": {
+          "type": "string",
+          "description": "Acquisition date in YYYY-MM-DD format.",
+          "minLength": 10,
+          "maxLength": 10,
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "notes": {
+          "type": "string",
+          "description": "Optional notes on tax lot or acquisition.",
+          "maxLength": 240
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of creation."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of last update."
+        }
+      },
+      "required": ["userId", "accountId", "accountName", "accountType", "ticker", "shares", "purchasePrice", "purchaseDate", "notes", "createdAt", "updatedAt"]
+    },
+    "FavoriteTicker": {
+      "title": "FavoriteTicker",
+      "description": "A stock ticker followed by the user for watchlist and research.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Firebase Auth UID of the owner.",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "ticker": {
+          "type": "string",
+          "description": "Uppercase stock ticker symbol.",
+          "minLength": 1,
+          "maxLength": 12,
+          "pattern": "^[A-Z0-9.\\-]+$"
+        },
+        "companyName": {
+          "type": "string",
+          "description": "Company legal or display name.",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "sector": {
+          "type": "string",
+          "description": "Market sector or industry classification.",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "thesisNotes": {
+          "type": "string",
+          "description": "User research notes on why they follow this ticker.",
+          "maxLength": 500
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of creation."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of last update."
+        }
+      },
+      "required": ["userId", "ticker", "companyName", "sector", "thesisNotes", "createdAt", "updatedAt"]
+    },
+    "AnalysisReport": {
+      "title": "AnalysisReport",
+      "description": "Saved monthly or on-demand portfolio analysis produced by the LangGraph agent.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Firebase Auth UID of the portfolio owner.",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "periodKey": {
+          "type": "string",
+          "description": "Idempotency period key (e.g., 2026-11-MONTHLY or ON-DEMAND-hash).",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "triggerType": {
+          "type": "string",
+          "description": "Whether run was scheduled monthly or triggered on-demand.",
+          "enum": ["MONTHLY", "ON_DEMAND"]
+        },
+        "modelUsed": {
+          "type": "string",
+          "description": "LLM model identifier used for synthesis (e.g., llama-3.3-70b-versatile via Groq).",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "totalValue": {
+          "type": "number",
+          "description": "Verified deterministic total portfolio value in USD at time of analysis."
+        },
+        "totalCostBasis": {
+          "type": "number",
+          "description": "Verified deterministic total cost basis in USD at time of analysis."
+        },
+        "totalUnrealizedGain": {
+          "type": "number",
+          "description": "Verified deterministic total unrealized gain/loss in USD."
+        },
+        "totalReturnPct": {
+          "type": "number",
+          "description": "Verified deterministic total unrealized return percentage."
+        },
+        "topHoldingTicker": {
+          "type": "string",
+          "description": "Ticker with largest portfolio weight.",
+          "minLength": 1,
+          "maxLength": 12
+        },
+        "topHoldingWeightPct": {
+          "type": "number",
+          "description": "Concentration percentage of the largest position."
+        },
+        "staleOrMissingCount": {
+          "type": "number",
+          "description": "Count of tickers with stale (>15m) or unavailable market quotes."
+        },
+        "executiveSummary": {
+          "type": "string",
+          "description": "Plain-language executive summary of portfolio performance.",
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "concentrationAnalysis": {
+          "type": "string",
+          "description": "Analysis of position concentration across investment and retirement accounts.",
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "dataQualityNotice": {
+          "type": "string",
+          "description": "Explanation of quote timestamps, stale data, or missing inputs.",
+          "minLength": 1,
+          "maxLength": 1500
+        },
+        "recommendationsText": {
+          "type": "string",
+          "description": "Reasoned recommendations grounded in deterministic metrics.",
+          "minLength": 1,
+          "maxLength": 3000
+        },
+        "limitationsAndBasis": {
+          "type": "string",
+          "description": "Basis of recommendations and explicit limitations (no trade execution, tax/fee assumptions).",
+          "minLength": 1,
+          "maxLength": 1500
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of creation."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of last update."
+        }
+      },
+      "required": [
+        "userId",
+        "periodKey",
+        "triggerType",
+        "modelUsed",
+        "totalValue",
+        "totalCostBasis",
+        "totalUnrealizedGain",
+        "totalReturnPct",
+        "topHoldingTicker",
+        "topHoldingWeightPct",
+        "staleOrMissingCount",
+        "executiveSummary",
+        "concentrationAnalysis",
+        "dataQualityNotice",
+        "recommendationsText",
+        "limitationsAndBasis",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}/accounts/{accountId}": {
+      "schema": { "$ref": "#/entities/Account" },
+      "description": "User-scoped investment and retirement accounts."
+    },
+    "/users/{userId}/holdings/{holdingId}": {
+      "schema": { "$ref": "#/entities/Holding" },
+      "description": "User-scoped stock holdings across accounts."
+    },
+    "/users/{userId}/favorites/{favoriteId}": {
+      "schema": { "$ref": "#/entities/FavoriteTicker" },
+      "description": "User-scoped favorite tickers and research notes."
+    },
+    "/users/{userId}/analyses/{analysisId}": {
+      "schema": { "$ref": "#/entities/AnalysisReport" },
+      "description": "User-scoped saved monthly and on-demand portfolio analyses."
+    }
+  }
+}

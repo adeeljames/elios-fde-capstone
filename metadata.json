@@ -1,0 +1,6 @@
+{
+  "name": "Meridian Portfolio Ledger",
+  "description": "Institutional-grade stock portfolio tracker, deterministic cost-basis engine, Finnhub market data monitor, LangGraph portfolio analysis agent, and authenticated MCP server built for the Elios Academy Forward Deployed Engineer Capstone.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
